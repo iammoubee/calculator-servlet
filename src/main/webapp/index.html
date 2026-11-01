@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#111827">
+    <title>Servlet Calculator</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <main class="calculator" aria-labelledby="page-title">
+        <header class="calculator-header">
+            <p class="eyebrow">JAVA SERVLET</p>
+            <h1 id="page-title">Calculator</h1>
+        </header>
+
+        <form id="calculator-form" action="calculate" method="post">
+            <div class="display-panel">
+                <p id="calculation" class="calculation" aria-hidden="true">&nbsp;</p>
+                <output id="display" class="display" aria-live="polite"
+                        aria-label="Calculator display">0</output>
+                <p id="message" class="message" role="status" aria-live="polite">
+                    Enter a number to begin
+                </p>
+            </div>
+
+            <input type="hidden" name="firstNumber" id="first-number">
+            <input type="hidden" name="operator" id="operator">
+            <input type="hidden" name="secondNumber" id="second-number">
+
+            <div class="keypad" aria-label="Calculator buttons">
+                <button class="key key-utility" type="button" data-action="clear"
+                        aria-label="Clear all">C</button>
+                <button class="key key-utility" type="button" data-action="delete"
+                        aria-label="Delete last digit">DEL</button>
+                <button class="key key-operator" type="button" data-operator="%"
+                        aria-label="Modulus">%</button>
+                <button class="key key-operator" type="button" data-operator="/"
+                        aria-label="Divide">÷</button>
+
+                <button class="key" type="button" data-digit="7">7</button>
+                <button class="key" type="button" data-digit="8">8</button>
+                <button class="key" type="button" data-digit="9">9</button>
+                <button class="key key-operator" type="button" data-operator="*"
+                        aria-label="Multiply">×</button>
+
+                <button class="key" type="button" data-digit="4">4</button>
+                <button class="key" type="button" data-digit="5">5</button>
+                <button class="key" type="button" data-digit="6">6</button>
+                <button class="key key-operator" type="button" data-operator="-"
+                        aria-label="Subtract">−</button>
+
+                <button class="key" type="button" data-digit="1">1</button>
+                <button class="key" type="button" data-digit="2">2</button>
+                <button class="key" type="button" data-digit="3">3</button>
+                <button class="key key-operator" type="button" data-operator="+"
+                        aria-label="Add">+</button>
+
+                <button class="key key-zero" type="button" data-digit="0">0</button>
+                <button class="key" type="button" data-digit=".">.</button>
+                <button class="key key-equals" type="submit" aria-label="Calculate result">=</button>
+            </div>
+        </form>
+
+        <footer>Calculations are performed by the Java Servlet.</footer>
+    </main>
+    <script>
+        (() => {
+            const form = document.getElementById("calculator-form");
+            const display = document.getElementById("display");
+            const calculation = document.getElementById("calculation");
+            const message = document.getElementById("message");
+            const firstNumberField = document.getElementById("first-number");
+            const operatorField = document.getElementById("operator");
+            const secondNumberField = document.getElementById("second-number");
+
+            let currentInput = "0";
+            let firstNumber = "";
+            let selectedOperator = "";
+            let waitingForSecondNumber = false;
+            let justCalculated = false;
+            let requestPending = false;
+
+            function render() {
+                display.textContent = currentInput;
+            }
+
+            function enterDigit(digit) {
+                if (justCalculated) {
+                    currentInput = digit === "." ? "0." : digit;
+                    justCalculated = false;
+                } else if (waitingForSecondNumber) {
+                    currentInput = digit === "." ? "0." : digit;
+                    waitingForSecondNumber = false;
+                } else if (digit === ".") {
+                    if (!currentInput.includes(".")) {
+                        currentInput += ".";
+                    }
+                } else {
+                    currentInput = currentInput === "0" ? digit : currentInput + digit;
+                }
+
+                message.textContent = " ";
+                render();
+            }
+
+            function chooseOperator(operator) {
+                if (currentInput.endsWith(".")) {
+                    currentInput = currentInput.slice(0, -1);
+                }
+                firstNumber = currentInput;
+                selectedOperator = operator;
+                waitingForSecondNumber = true;
+                justCalculated = false;
+                calculation.textContent = firstNumber + " " + operator;
+                message.textContent = "Enter the next number";
+                render();
+            }
+
+            function clearCalculator() {
+                currentInput = "0";
+                firstNumber = "";
+                selectedOperator = "";
+                waitingForSecondNumber = false;
+                justCalculated = false;
+                calculation.textContent = "";
+                message.textContent = "Enter a number to begin";
+                render();
+            }
+
+            function deleteDigit() {
+                if (justCalculated) {
+                    clearCalculator();
+                    return;
+                }
+                if (waitingForSecondNumber) {
+                    currentInput = "0";
+                    waitingForSecondNumber = false;
+                } else {
+                    currentInput = currentInput.length > 1
+                        ? currentInput.slice(0, -1)
+                        : "0";
+                    if (currentInput === "-") {
+                        currentInput = "0";
+                    }
+                }
+                message.textContent = " ";
+                render();
+            }
+
+            form.addEventListener("click", (event) => {
+                const button = event.target.closest("button");
+                if (!button) {
+                    return;
+                }
+                if (button.dataset.digit !== undefined) {
+                    enterDigit(button.dataset.digit);
+                } else if (button.dataset.operator) {
+                    chooseOperator(button.dataset.operator);
+                } else if (button.dataset.action === "clear") {
+                    clearCalculator();
+                } else if (button.dataset.action === "delete") {
+                    deleteDigit();
+                }
+            });
+
+            document.addEventListener("keydown", (event) => {
+                if (/^\d$/.test(event.key) || event.key === ".") {
+                    event.preventDefault();
+                    enterDigit(event.key);
+                } else if (["+", "-", "*", "/", "%"].includes(event.key)) {
+                    event.preventDefault();
+                    chooseOperator(event.key);
+                } else if (event.key === "Enter" || event.key === "=") {
+                    event.preventDefault();
+                    form.requestSubmit();
+                } else if (event.key === "Backspace") {
+                    event.preventDefault();
+                    deleteDigit();
+                } else if (event.key === "Escape" || event.key === "Delete") {
+                    event.preventDefault();
+                    clearCalculator();
+                }
+            });
+
+            form.addEventListener("submit", async (event) => {
+                event.preventDefault();
+                if (requestPending) {
+                    return;
+                }
+                if (!selectedOperator || waitingForSecondNumber) {
+                    message.textContent = "Choose an operation and enter the next number.";
+                    return;
+                }
+
+                requestPending = true;
+                const equalsButton = form.querySelector(".key-equals");
+                equalsButton.disabled = true;
+                firstNumberField.value = firstNumber;
+                operatorField.value = selectedOperator;
+                secondNumberField.value = currentInput.endsWith(".")
+                    ? currentInput.slice(0, -1)
+                    : currentInput;
+                calculation.textContent =
+                    firstNumber + " " + selectedOperator + " " + secondNumberField.value + " =";
+                message.textContent = "Calculating...";
+
+                try {
+                    const response = await fetch(form.action, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                        body: new URLSearchParams(new FormData(form))
+                    });
+                    const result = await response.text();
+
+                    if (!response.ok) {
+                        message.textContent = result;
+                        return;
+                    }
+
+                    currentInput = result;
+                    firstNumber = "";
+                    selectedOperator = "";
+                    waitingForSecondNumber = false;
+                    justCalculated = true;
+                    message.textContent = "Result";
+                    render();
+                } catch (error) {
+                    message.textContent = "Could not reach the calculator server. Check Tomcat.";
+                } finally {
+                    requestPending = false;
+                    equalsButton.disabled = false;
+                }
+            });
+        })();
+    </script>
+</body>
+</html>
